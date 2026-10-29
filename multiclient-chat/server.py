@@ -17,12 +17,11 @@ from websockets.exceptions import ConnectionClosed
 
 HOST = "localhost"
 PORT = 8765
-MAX_FILE_SIZE = 5 * 1024 * 1024        # 5 MB per file
-MAX_MESSAGE_BYTES = 1024 * 1024        # largest single WebSocket message accepted
-MAX_TEXT_LENGTH = 1000                 # longest chat message
+MAX_FILE_SIZE = 5 * 1024 * 1024
+MAX_MESSAGE_BYTES = 1024 * 1024
+MAX_TEXT_LENGTH = 1000
 USERNAME_PATTERN = re.compile(r"[A-Za-z0-9_ -]{1,20}")
 
-# Only these files are served over HTTP (so nobody can read other files).
 STATIC_DIR = Path(__file__).parent / "static"
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
@@ -31,11 +30,10 @@ STATIC_FILES = {
     "/script.js": ("script.js", "text/javascript; charset=utf-8"),
 }
 
-clients = {}    # websocket connection -> username (the "online users" table)
-transfers = {}  # websocket connection -> file transfer currently in progress
+clients = {}
+transfers = {}
 
 
-# ---------------------------------------------------------------- helpers
 def now():
     return datetime.now(timezone.utc).isoformat()
 
@@ -67,7 +65,6 @@ def broadcast_users():
     broadcast_all(type="users", users=sorted(clients.values(), key=str.lower))
 
 
-# ------------------------------------------------------- message handlers
 async def handle_join(websocket, message):
     if websocket in clients:
         return await send_to(websocket, type="error", message="You have already joined.")
@@ -81,7 +78,7 @@ async def handle_join(websocket, message):
     if username.lower() in (name.lower() for name in clients.values()):
         return await send_to(websocket, type="error", message="That username is already taken.")
 
-    clients[websocket] = username   # no await between the check and this line, so no race
+    clients[websocket] = username
     print(f"[+] {username} joined ({len(clients)} online)")
     await send_to(websocket, type="join_ok", username=username)
     broadcast_all(type="system", text=f"{username} joined the chat", time=now())
@@ -117,7 +114,7 @@ async def handle_file_start(websocket, message):
         return await send_to(websocket, type="error", message="Invalid file id.")
     if not isinstance(name, str):
         return await send_to(websocket, type="error", message="Invalid file name.", file_id=file_id)
-    name = name.replace("\\", "/").split("/")[-1].strip()   # drop any folder path
+    name = name.replace("\\", "/").split("/")[-1].strip()
     if not name or len(name) > 100:
         return await send_to(websocket, type="error", message="Invalid file name.", file_id=file_id)
     if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
@@ -144,14 +141,13 @@ async def handle_file_chunk(websocket, message):
     if message.get("index") != transfer["next_index"] or not isinstance(data, str):
         return await fail_transfer(websocket, file_id, "File chunk out of order or invalid.")
     try:
-        chunk = base64.b64decode(data, validate=True)   # Base64 text -> raw bytes
+        chunk = base64.b64decode(data, validate=True)
     except (binascii.Error, ValueError):
         return await fail_transfer(websocket, file_id, "File chunk is not valid Base64.")
     transfer["received"] += len(chunk)
     if transfer["received"] > transfer["size"]:
         return await fail_transfer(websocket, file_id, "Received more data than the declared file size.")
     transfer["next_index"] += 1
-    # Relay the chunk to the other clients. Nothing is saved on the server.
     broadcast_others(websocket, type="file_chunk", transfer_id=f"{clients[websocket]}:{file_id}",
                      index=message["index"], data=data)
 
@@ -213,19 +209,18 @@ def remove_client(websocket):
 async def chat_handler(websocket):
     """Runs once per client connection, for as long as that client stays connected."""
     try:
-        async for raw in websocket:     # waits for each incoming message (full duplex)
+        async for raw in websocket:
             await handle_message(websocket, raw)
     except ConnectionClosed:
-        pass                            # client went away; nothing to do but clean up
+        pass
     finally:
         remove_client(websocket)
 
 
-# ------------------------------------------------------- HTTP (web page)
 async def serve_static(connection, request):
     """Answer normal HTTP requests with the frontend; let WebSocket upgrades through."""
     if request.headers.get("Upgrade", "").lower() == "websocket":
-        return None                     # None = continue with the WebSocket handshake
+        return None
     entry = STATIC_FILES.get(request.path.split("?")[0])
     if entry is None:
         return connection.respond(HTTPStatus.NOT_FOUND, "404 Not found\n")
