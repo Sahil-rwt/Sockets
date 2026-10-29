@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multiclient Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Screen 1: username entry -->
+  <section id="login-screen" class="card login-card">
+    <h1>Join the chat</h1>
+    <p class="muted">Choose a username (1-20 letters, numbers, spaces, _ or -).</p>
+    <form id="login-form">
+      <input id="username-input" type="text" maxlength="20" placeholder="Username" autocomplete="off" required>
+      <button id="join-button" type="submit">Join</button>
+    </form>
+    <p id="login-error" class="error-text" role="alert"></p>
+  </section>
+
+  <!-- Screen 2: chat -->
+  <main id="chat-screen" class="chat-layout" hidden>
+    <aside class="card users-panel">
+      <h2>Online (<span id="user-count">0</span>)</h2>
+      <ul id="users-list"></ul>
+    </aside>
+
+    <section class="card chat-panel">
+      <header class="chat-header">
+        <h2>Chat room</h2>
+        <div class="status">
+          <span id="status-dot" class="dot offline"></span>
+          <span id="status-text">Disconnected</span>
+          <button id="reconnect-button" class="small-button" type="button" hidden>Reconnect</button>
+        </div>
+      </header>
+
+      <div id="messages" class="messages"></div>
+      <div id="transfer-status" class="transfer-status"></div>
+
+      <form id="message-form" class="composer">
+        <input id="file-input" type="file" hidden>
+        <button id="attach-button" class="secondary" type="button" title="Send a file (max 5 MB)">Attach</button>
+        <input id="message-input" type="text" maxlength="1000" placeholder="Type a message..." autocomplete="off">
+        <button id="send-button" type="submit">Send</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
